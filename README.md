@@ -20,4 +20,4 @@ To re-generate these, run the three shell scripts, which require:
 
 To do:
 
-- add in the analysis .ipynb notebook from funcmasker-flex, and also run on local data
+- run 2dunet (rutherford method) on uwo data again and calc dice (scripts 5 and 6 in progress)
