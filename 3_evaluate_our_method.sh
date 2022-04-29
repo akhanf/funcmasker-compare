@@ -1,0 +1,1 @@
+funcmasker-flex ../raw_data/bids_rutherford_testonly funcmasker_output evaluate -p  --cores all --path-mask /local/scratch/raw_data/bids_rutherford_testonly/derivatives/manual-masks/sub-{subject}/ses-{session}/func/sub-{subject}_ses-{session}_task-rest_bold.nii.gz $@ 
