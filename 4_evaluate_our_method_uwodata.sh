@@ -1,0 +1,1 @@
+funcmasker-flex ../raw_data/bids_uwo funcmasker_output_uwodata evaluate -p  --cores all --path-mask /localscratch/raw_data/bids_uwo/derivatives/masks/sub-{subject}/ses-{session}/func/sub-{subject}_ses-{session}_task-{task}_desc-brain_mask.nii.gz --notemp $@
