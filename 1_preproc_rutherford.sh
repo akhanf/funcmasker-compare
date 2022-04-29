@@ -1,1 +1,0 @@
-funcmasker-flex ../raw_data/bids_rutherford/ funcmasker_output train  -p   --path-mask ../raw_data/bids_rutherford/derivatives/manual-masks/sub-{subject}/ses-{session}/func/sub-{subject}_ses-{session}_task-rest_bold.nii.gz  --until create_dataset_json --cores all -np
