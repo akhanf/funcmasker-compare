@@ -16,3 +16,8 @@ To re-generate these, run the three shell scripts, which require:
 ```
 ../fetal-code/
 ```
+
+
+To do:
+
+- add in the analysis .ipynb notebook from funcmasker-flex, and also run on local data
