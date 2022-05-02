@@ -2,7 +2,6 @@ resources
 logs
 config
 .snakemake
-.snakebids
 .ipynb_checkpoints
 *mask
 *old
