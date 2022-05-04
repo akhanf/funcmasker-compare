@@ -2,9 +2,12 @@
 
 #this uses http://github.com/akhanf/fetal-code (fork with minor update for running locally)
 
-for f in `ls -d /localscratch/proc_rutherford/funcmasker_output_uwodata/results/sub-*/ses-*/func/sub-*_ses-*_task-*_desc-cleanorient_bold`
+source ../fetal-code/venv/bin/activate
+
+
+for f in `ls -d /localscratch/funcmasker-compare/funcmasker_output_uwodata/results/sub-*/ses-*/func/sub-*_ses-*_task-*_desc-conform_bold`
 do
-    out_folder=${f%desc-cleanorient_bold}desc-rutherford_mask
+    out_folder=${f%desc-conform_bold}desc-rutherford_mask
     out_mask_4d=$out_folder.nii.gz
 
     echo $out_folder
@@ -17,12 +20,15 @@ do
         pushd ../fetal-code/code
         python createMasks.py ${im} ${out_folder}/${fname}
         popd
-        fi
         fslorient -deleteorient ${out_folder}/${fname}
+        fi
     done
 
-
+    if [ ! -e ${out_mask_4d} ]
+    then
     echo fslmerge -t ${out_mask_4d} ${out_folder}/*.nii.gz
     fslmerge -t ${out_mask_4d} ${out_folder}/*.nii.gz
-    break
+    fi
 done  
+
+deactivate

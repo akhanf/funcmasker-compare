@@ -1,1 +1,1 @@
-funcmasker-flex ../raw_data/bids_uwo funcmasker_output_uwodata evaluate_rutherford -p  --cores all --path-mask /localscratch/raw_data/bids_uwo/derivatives/manual-masks/sub-{subject}/ses-{session}/func/sub-{subject}_ses-{session}_task-{task}_bold.nii.gz $@ 
+funcmasker-flex ../raw_data/bids_uwo_matchheader funcmasker_output_uwodata evaluate_rutherford -p  --cores all --path-mask /localscratch/raw_data/bids_uwo_matchheader/derivatives/manual-masks/sub-{subject}/ses-{session}/func/sub-{subject}_ses-{session}_task-{task}_bold.nii.gz $@ 
