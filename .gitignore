@@ -4,6 +4,9 @@ config
 .snakemake
 .ipynb_checkpoints
 *mask
+*desc-unetclean*.nii.gz
+*desc-manualclean*.nii.gz
+*desc-conform*.nii.gz
 *old
 *dice.txt
 *.swp
