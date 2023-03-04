@@ -1,0 +1,180 @@
+import snakebids
+from snakebids import bids
+
+configfile: 'config.yml'
+
+# to do:
+# calculate additional segmentation metrics
+#  -- need to split 4d images
+
+ # Get input wildcards
+inputs = snakebids.generate_inputs(
+    bids_dir=config["bids_dir"],
+    pybids_inputs=config["pybids_inputs"],
+    pybids_database_dir=config.get("pybids_db_dir"),
+    pybids_reset_database=config.get("pybids_db_reset"),
+    derivatives=config.get("derivatives", None),
+    participant_label=config.get("participant_label", None),
+    exclude_participant_label=config.get("exclude_participant_label", None),
+    use_bids_inputs=True,
+)
+
+seg_inputs={}
+
+for method in config['seg_bids'].keys():
+    seg_inputs[method] = snakebids.generate_inputs(
+        bids_dir=config['seg_bids'][method],
+        pybids_inputs=config["pybids_inputs_seg"],
+        pybids_database_dir=config.get("pybids_db_dir"),
+        pybids_reset_database=config.get("pybids_db_reset"),
+        derivatives=config.get("derivatives", None),
+        participant_label=config.get("participant_label", None),
+        exclude_participant_label=config.get("exclude_participant_label", None),
+        use_bids_inputs=True,
+    )
+
+input_wildcards = seg_inputs['funcmasker'].input_wildcards['mask']
+subj_wildcards = seg_inputs['funcmasker'].input_wildcards['mask']
+input_zip_lists = seg_inputs['funcmasker'].input_zip_lists['mask']
+
+rule all:
+    input:
+        csv=expand(bids(
+                root="results",
+                datatype="func",
+                desc="{method}",
+                suffix="metrics.csv",
+        ),method=config['seg_bids'].keys())
+
+            
+
+def get_input_split(wildcards):
+    suffix=wildcards.suffix
+    if suffix=='bold':
+        return inputs.input_path["bold"]
+    elif suffix=='manualmask':
+        return inputs.input_path["mask"]
+    elif suffix=='funcmaskermask':
+        return seg_inputs['funcmasker'].input_path["mask"]
+    elif suffix=='rutherfordmask':
+        return seg_inputs['rutherford'].input_path["mask"]
+
+rule split:
+    input:
+        get_input_split
+    output:
+        split_dir=temp(
+            directory(
+                bids(
+                    root="results",
+                    datatype="func",
+                    desc="split",
+                    suffix="{suffix}",
+                    **input_wildcards
+                )
+            )
+        ),
+    group:
+        "subj"
+    shell:
+        "mkdir -p {output} && fslsplit {input}  {output}/vol_"
+
+
+rule conform:
+    input:
+        rules.split.output,
+    params:
+        resample_mm="3.5x3.5x3.5mm",
+        pad_to="96x96x37",
+    output:
+        nii_dir=temp(
+            directory(
+                bids(
+                    root="results",
+                    datatype="func",
+                    desc="conform",
+                    suffix="{suffix,manualmask|rutherfordmask|funcmaskermask|bold}",
+                    **input_wildcards
+                )
+            )
+        ),
+    group:
+        "subj"
+    shell:
+        "mkdir -p {output} && "
+        "for in_nii in `ls {input}/*.nii.gz`; do "
+        " filename=${{in_nii##*/}} && "
+        " prefix=${{filename%%.nii.gz}} &&"
+        " out_nii={output}/${{prefix}}_0000.nii.gz && "
+        " c3d $in_nii -resample-mm {params.resample_mm} -pad-to {params.pad_to} 0 $out_nii && "
+        " fslorient -deleteorient $out_nii; "
+        "done"
+
+
+rule merge:
+    input:
+        nii_dir=rules.conform.output
+    output:
+        nii=bids(
+                root="results",
+                datatype="func",
+                desc="conform",
+                suffix="{suffix,manualmask|rutherfordmask|funcmaskermask|bold}.nii.gz",
+                **input_wildcards
+        ),
+    shell:
+        'fslmerge -t {output} {input.nii_dir}/*.nii.gz'
+
+
+    
+
+# data is now corrected at this point
+
+rule calc_metrics_4d:
+    input:
+        manual=bids(
+                root="results",
+                datatype="func",
+                desc="conform",
+                suffix="manualmask.nii.gz",
+                **input_wildcards
+        ),
+        auto=bids(
+                root="results",
+                datatype="func",
+                desc="conform",
+                suffix="{method}mask.nii.gz",
+                **input_wildcards
+        ),
+    params:
+        scanname=bids(**input_wildcards,suffix='vol',include_subject_dir=False,include_session_dir=False)
+    output:
+        csv=bids(
+                root="results",
+                datatype="func",
+                desc="{method}",
+                suffix="metrics.csv",
+                **input_wildcards
+        ),
+    script:
+        'scripts/calc_metrics_4d.py'
+        
+
+rule concat_metrics:
+    input:
+         csvs=expand(bids(
+                root="results",
+                datatype="func",
+                desc="{method}",
+                suffix="metrics.csv",
+                **input_wildcards
+        ),zip,**input_zip_lists,allow_missing=True),
+    output:
+         csv=bids(
+                root="results",
+                datatype="func",
+                desc="{method}",
+                suffix="metrics.csv",
+        )
+    script: 
+        'scripts/concat_csv.py'
