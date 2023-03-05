@@ -3,6 +3,11 @@ seg_bids:
   funcmasker: 'bids_funcmasker'
   rutherford: 'bids_rutherford'
 
+methods:
+  - funcmasker
+  - rutherford
+  - bet # bet is run in this workflow, instead of grabbed from bids
+
 pybids_inputs:
   mask:
     filters:

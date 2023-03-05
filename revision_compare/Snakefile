@@ -3,9 +3,6 @@ from snakebids import bids
 
 configfile: 'config.yml'
 
-# to do:
-# calculate additional segmentation metrics
-#  -- need to split 4d images
 
  # Get input wildcards
 inputs = snakebids.generate_inputs(
@@ -43,8 +40,9 @@ rule all:
                 root="results",
                 datatype="func",
                 desc="{method}",
+                dice="{dice}",
                 suffix="metrics.csv",
-        ),method=config['seg_bids'].keys())
+        ),method=config['methods'],dice=['2d','3d'])
 
             
 
@@ -105,11 +103,40 @@ rule conform:
         "for in_nii in `ls {input}/*.nii.gz`; do "
         " filename=${{in_nii##*/}} && "
         " prefix=${{filename%%.nii.gz}} &&"
-        " out_nii={output}/${{prefix}}_0000.nii.gz && "
+        " out_nii={output}/${{prefix}}.nii.gz && "
         " c3d $in_nii -resample-mm {params.resample_mm} -pad-to {params.pad_to} 0 $out_nii && "
         " fslorient -deleteorient $out_nii; "
         "done"
 
+
+rule run_bet:
+    input:
+        nii_dir=bids(
+                    root="results",
+                    datatype="func",
+                    desc="conform",
+                    suffix="bold",
+                    **input_wildcards
+        ),
+    output:
+         nii_dir=directory(bids(
+                    root="results",
+                    datatype="func",
+                    desc="conform",
+                    suffix="betmask",
+                    **input_wildcards
+        )),
+    shell:
+        "mkdir -p {output} && "
+        "for in_nii in `ls {input}/*.nii.gz`; do "
+        " filename=${{in_nii##*/}} && "
+        " prefix=${{filename%%.nii.gz}} &&"
+        " out_nii={output}/${{prefix}}.nii.gz && "
+        " bet $in_nii $out_nii -m -v && rm $out_nii ; " #-m creates a _mask image, so we delete the toerh one
+        "done"
+
+
+    
 
 rule merge:
     input:
@@ -119,7 +146,7 @@ rule merge:
                 root="results",
                 datatype="func",
                 desc="conform",
-                suffix="{suffix,manualmask|rutherfordmask|funcmaskermask|bold}.nii.gz",
+                suffix="{suffix,manualmask|rutherfordmask|funcmaskermask|betmask|bold}.nii.gz",
                 **input_wildcards
         ),
     shell:
@@ -130,7 +157,7 @@ rule merge:
 
 # data is now corrected at this point
 
-rule calc_metrics_4d:
+rule calc_metrics_4d_dice3d:
     input:
         manual=bids(
                 root="results",
@@ -153,6 +180,7 @@ rule calc_metrics_4d:
                 root="results",
                 datatype="func",
                 desc="{method}",
+                dice="3d",
                 suffix="metrics.csv",
                 **input_wildcards
         ),
@@ -160,12 +188,43 @@ rule calc_metrics_4d:
         'scripts/calc_metrics_4d.py'
         
 
+rule calc_metrics_4d_dice2d:
+    input:
+        manual=bids(
+                root="results",
+                datatype="func",
+                desc="conform",
+                suffix="manualmask.nii.gz",
+                **input_wildcards
+        ),
+        auto=bids(
+                root="results",
+                datatype="func",
+                desc="conform",
+                suffix="{method}mask.nii.gz",
+                **input_wildcards
+        ),
+    params:
+        scanname=bids(**input_wildcards,suffix='vol',include_subject_dir=False,include_session_dir=False)
+    output:
+        csv=bids(
+                root="results",
+                datatype="func",
+                desc="{method}",
+                dice="2d",
+                suffix="metrics.csv",
+                **input_wildcards
+        ),
+    script:
+        'scripts/calc_metrics_4d_dice2d.py'
+        
 rule concat_metrics:
     input:
          csvs=expand(bids(
                 root="results",
                 datatype="func",
                 desc="{method}",
+                dice="{dice}",
                 suffix="metrics.csv",
                 **input_wildcards
         ),zip,**input_zip_lists,allow_missing=True),
@@ -174,6 +233,7 @@ rule concat_metrics:
                 root="results",
                 datatype="func",
                 desc="{method}",
+                dice="{dice}",
                 suffix="metrics.csv",
         )
     script: 
