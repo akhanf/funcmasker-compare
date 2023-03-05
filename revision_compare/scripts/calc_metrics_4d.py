@@ -9,13 +9,16 @@ auto_nib = nib.load(snakemake.input.auto)
 manual_vols = manual_nib.get_fdata()
 auto_vols = auto_nib.get_fdata()
 
-print(manual_vols.shape)
+print(f'manual seg shape: {manual_vols.shape}')
+print(f'auto seg shape: {auto_vols.shape}')
+
+#for whatever reason, manual seg can have wrong # of vols -- not sure what has happened here..
 
 out_dict={'id':[],'sensitivity':[],'specificity':[]}
 
 scanname=snakemake.params.scanname
 
-for i in range(manual_vols.shape[3]):
+for i in range(auto_vols.shape[3]):
     manual_3d = manual_vols[:,:,:,i]
     auto_3d = auto_vols[:,:,:,i]
 
