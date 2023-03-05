@@ -42,8 +42,19 @@ rule all:
                 desc="{method}",
                 dice="{dice}",
                 suffix="metrics.csv",
-        ),method=config['methods'],dice=['2d','3d'])
-
+        ),method=config['methods'],dice=['2d','3d']),
+        png=expand(expand(bids(
+                root="results",
+                datatype="qc",
+                timepoint='{{timepoint}}',
+                zpercent='{{zpercent}}',
+                method="{{method}}",
+                suffix="snap.png",
+                **input_wildcards
+        ),zip,**input_zip_lists,allow_missing=True),
+        timepoint=0,
+        zpercent='50%',
+        method=['funcmasker','rutherford','bet','manual'])
             
 
 def get_input_split(wildcards):
@@ -238,3 +249,39 @@ rule concat_metrics:
         )
     script: 
         'scripts/concat_csv.py'
+
+rule overlay_mask:
+    input:
+        bold=bids(
+                root="results",
+                datatype="func",
+                desc="conform",
+                suffix="bold.nii.gz",
+                **input_wildcards
+        ),
+        seg=bids(
+                root="results",
+                datatype="func",
+                desc="conform",
+                suffix="{method}mask.nii.gz",
+                **input_wildcards
+        ),
+        labels_txt='resources/labels.txt'
+    output:
+        png=bids(
+                root="results",
+                datatype="qc",
+                timepoint='{timepoint}',
+                zpercent='{zpercent}',
+                method="{method}",
+                suffix="snap.png",
+                **input_wildcards
+        ),
+    shell:
+        'c4d {input.bold} {input.seg} -foreach -slice w {wildcards.timepoint} -slice z {wildcards.zpercent} -endfor '
+        ' -popas SEG -popas BOLD '
+        ' -push BOLD -stretch 2% 98% 0 255 -clip 0 255 '
+        ' -push SEG -binarize '
+        ' -oli {input.labels_txt} 0.5 -type uchar -omc {output.png}'
+
+    
